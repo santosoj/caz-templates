@@ -92,6 +92,8 @@ def reload(
     }
     inject_vars(injected_locals, nth_stack_frame=2)  # inject into reload's caller
 
+    globals().update(get_brownie_vars())
+
     print()
     loader.print_loaded_contract_info()
     print("These are available as local variables now.\n")

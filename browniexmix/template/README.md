@@ -37,7 +37,13 @@ loader = ContractLoader()
 
 (The directory containing `contracts.json` and the ABIs may optionally be passed as an argument.)
 
-After instantiation, `loader.contract_table` maps each of the keys to a `Contract` object.
+Build the contract table (requires a network for `Contract.from_abi`):
+
+```python
+loader.build_contract_table()
+```
+
+After building the contract table, `loader.contract_table` maps each of the keys to a `Contract` object.
 
 To generate the Solidity interfaces, call
 

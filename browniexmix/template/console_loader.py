@@ -70,6 +70,9 @@ def reload(
     global loader
     global startup_locals
 
+    loader = ContractLoader()
+    loader.generate_solidity_interfaces()
+
     if active_project is not None:
         active_project.close()
     active_project = project.load()
@@ -82,13 +85,15 @@ def reload(
     elif not persist_network:
         reset_network(fork_block_number)
 
-    inject_vars(get_brownie_vars(), nth_stack_frame=2)  # inject into reload's caller
+    loader.build_contract_table()
+    injected_locals = {
+        **get_brownie_vars(),
+        **loader.contract_table
+    }
+    inject_vars(injected_locals, nth_stack_frame=2)  # inject into reload's caller
 
-    loader = ContractLoader()
-    loader.generate_solidity_interfaces()
     print()
     loader.print_loaded_contract_info()
-    inject_vars(loader.contract_table, nth_stack_frame=2)
     print("These are available as local variables now.\n")
 
     script = sys.argv[1] if len(sys.argv) > 1 else "console_startup.py"

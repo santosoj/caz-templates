@@ -11,7 +11,6 @@ class ContractLoader:
         self.directory = directory
         with open(path.join(self.directory, "contracts.json"), "r") as f:
             self.specs = json.loads(f.read())
-        self.build_contract_table()
     
     def build_contract_table(self):
         self.contract_table = dict()

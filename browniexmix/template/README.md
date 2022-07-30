@@ -2,9 +2,18 @@
 
 ### Enhanced Brownie project starter
 
+
+[Requirements](#requirements)
+
+[External Contract Loader](#external_contract_loader)
+
+[Console Enhancements](#console_enhancements)
+
+[Various Notes](#various_notes)
+
 ----
 
-## Requirements
+## <a id="requirements"></a> Requirements
 
 The Python env used by Brownie must have the [abi2solc](https://github.com/iamdefinitelyahuman/abi2solc) package installed. If Brownie was installed using `pipx`, the dependency may be injected using
 
@@ -18,7 +27,7 @@ If the enhanced console's `reload` function is to be used with `persist_network=
 npm i -D hardhat
 ```
 
-## External Contract Loader
+## <a id="external_contract_loader"></a> External Contract Loader
 
 `Contract.from_explorer` is excellent, but loading the same contracts from Etherscan over and over again is wasteful. `ContractLoader` instantiates external contracts from ABIs stored within the project. It also generates Solidity interface definitions from the ABI files using [abi2solc](https://github.com/iamdefinitelyahuman/abi2solc).
 
@@ -53,7 +62,7 @@ loader.generate_solidity_interfaces()
 
 An optional output directory may be passed (it defaults to `contracts/external`). The interfaces will be generated in the output directory, and each of them will have some commented Solidity at the top of the file that declares the interfaces with external contracts at the addresses specified in `contracts.json`.
 
-## Console Enhancements
+##  <a id="console_enhancements"></a> Console Enhancements
 
 It's not just loading external contracts, there are other tasks that often need to be done upon starting a Brownie console, and having to enter the same code every time becomes tedious.
 
@@ -144,3 +153,107 @@ And `brownie-config.yaml` in the project root should have this in the `networks`
 networks:
   default: hardhat-fork
 ```
+
+## <a id="various_notes"></a> Various Notes
+
+### Forking node with any EVM network
+
+#### Add a development network with a do-nothing `cmd`
+
+Specification in `network-config.yaml` looks something like this:
+
+```yaml
+- cmd: ':'
+  cmd_settings:
+    chain_id: 56
+    fork: http://127.0.0.1:8545
+  host: http://127.0.0.1:8545
+  id: local_8545
+  name: local_8545
+```
+
+And `brownie-config.yaml` in the project root should have this in the `networks` section:
+
+```yaml
+networks:
+  default: local_8545
+```
+
+This will make brownie run the `:` command, which does nothing, and connect to the network at `http://127.0.0.1:8545`. This network needs to be started manually.
+
+To ensure Hardhat uses the correct chain ID (rather than `31337`) with the forking node, put this in `hardhat.config.js`:
+
+```javascript
+module.exports = {
+    networks: {
+        hardhat: {
+            // ...any other settings that may be there...
+            chainId: 56,
+        }
+    }
+}
+```
+
+Start the node manually (before running brownie commands) using:
+
+```bash
+npx hardhat node --fork http://127.0.0.1:8545
+```
+
+Then, when running `brownie console`, you'll be on the forked network with the usual accounts with 10k ETH, and the chain ID will be correct.
+
+```
+Attached to local RPC client listening at '127.0.0.1:8545'...
+Brownie environment is ready.
+>>> web3.eth.blockNumber
+19995527
+>>> web3.eth.chainId
+56
+>>> accounts
+[<Account '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'>, <Account '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'>, <Account 
+...
+>>> web3.eth.getBalance(accounts[0].address) / 1e18
+10000.0
+```
+
+### Simple local proxy for JSON RPC requests
+
+This is useful when:
+  - you would specify an API key in a query parameter. So there would be `POST` requests with a JSON RPC body and the API key in the URL (`https://bsc.getblock.io/?api_key=<YOUR_API_KEY>`), as supported by GetBlock
+  - *something* is silently removing this (and any) query parameter
+  - the API supports passing the API key in HTTP header (as GetBlock does)
+
+The approach here is to use `npx hardhat node --fork` with the URL of a proxy running locally. The proxy adds the API key header, makes the request to the node provider, and relays the response back to Hardhat.
+
+Sample proxy implemented with Flask. (Start with `FLASK_APP=proxy flask run`)
+
+```python
+# proxy.py
+
+import json
+import requests
+
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route("/mainnet", methods=["POST"], strict_slashes=False)
+def mainnet():
+    res = requests.post(
+        "https://bsc.getblock.io/mainnet/",
+        json=request.json,
+        headers={
+            "x-api-key": "<YOUR_API_KEY>"
+        },
+        verify=False,
+    )
+    return res.json()
+```
+
+Then, with this proxy listening at e.g. `127.0.0.1:5000`:
+
+```
+npx hardhat node --fork http://127.0.0.1:5000/mainnet
+```
+
+(Wouldn't work when using `localhost` instead of `127.0.0.1`.)

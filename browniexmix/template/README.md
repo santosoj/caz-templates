@@ -257,3 +257,27 @@ npx hardhat node --fork http://127.0.0.1:5000/mainnet
 ```
 
 (Wouldn't work when using `localhost` instead of `127.0.0.1`.)
+
+### BSC archive node
+
+```shell
+npx hardhat node --fork https://bscrpc.com/erigonbsc --fork-block-number <BLOCK_NUMBER>
+```
+
+No authentication needed. Free BSC **archive** node provided by Ankr.
+
+The version of Erigon they're currently running seems to have an issue processing the `net_version` command, which would cause Hardhat to fail with this error message:
+
+```
+Error HH604: Error running JSON-RPC server: connection error: desc = "transport: Error while dialing dial tcp 127.0.0.1:9090: connect: connection refused"
+```
+
+This can be helped by e.g. extending the proxy snippet above to intercept `net_version` and return the 'canonical' response without sending the command to the remote node:
+
+```
+{
+	"id": <INCOMING_JSON_RPC_REQUEST_ID>,
+	"jsonrpc": "2.0",
+	"result": "56"
+}
+```

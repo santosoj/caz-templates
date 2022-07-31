@@ -233,7 +233,7 @@ Sample proxy implemented with Flask. (Start with `FLASK_APP=proxy flask run`)
 import json
 import requests
 
-from flask import Flask, request
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
@@ -247,7 +247,9 @@ def mainnet():
         },
         verify=False,
     )
-    return res.json()
+    # There may be multiple RPC calls in one payload, and Flask doesn't allow returning a list,
+    # so wrap the response with jsonify.
+    return jsonify(res.json())
 ```
 
 Then, with this proxy listening at e.g. `127.0.0.1:5000`:
